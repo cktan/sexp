@@ -42,7 +42,7 @@ int main(int argc, const char **argv) {
     fprintf(stderr, "sexp_to_text failed\n");
     exit(1);
   }
-  printf("%s", p);
+  printf("%s\n", p);
 
   if (*endp != 0) {
     fprintf(stderr, "\n");

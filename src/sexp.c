@@ -82,7 +82,8 @@ char *sexp_to_text(sexp_object_t *obj) {
       }
     }
     if (ok) {
-      ret = malloc(total + 3); // for '(' and ')' and NUL
+      total += 3; // for '(' and ')' and NUL
+      ret = malloc(total + 3);
       ok = (ret != 0);
     }
     if (ok) {
