@@ -52,5 +52,6 @@ int main(int argc, const char **argv) {
 
   free((void *)p);
   free((void *)s);
+  sexp_release(ox);
   return 0;
 }
