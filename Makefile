@@ -1,8 +1,7 @@
 .NOTPARALLEL:
 
 prefix ?= /usr/local
-#DIRS = src tests
-DIRS = src
+DIRS = src tests
 
 BUILDDIRS = $(DIRS:%=build-%)
 CLEANDIRS = $(DIRS:%=clean-%)

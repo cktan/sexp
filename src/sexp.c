@@ -1,7 +1,157 @@
+#define _POSIX_C_SOURCE 200809L
 #include "sexp.h"
 #include <assert.h>
+#include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+static int need_quote(const char *s) {
+  int special = (*s == 0);
+  for (; *s; s++) {
+    if (special) {
+      break;
+    }
+    int ch = *s;
+    special |= !(isprint(ch));
+    special |= isspace(ch);
+    special |= (ch == '(');
+    special |= (ch == ')');
+    special |= (ch == '"');
+  }
+  return special;
+}
+
+static char *quote(const char *s) {
+  int max = strlen(s) + 10;
+  char *buf = malloc(max);
+  if (!buf) {
+    return 0;
+  }
+  char *p = buf;
+  *p++ = '"';
+
+  for (; *s; s++) {
+    if (p - buf >= max - 5) {
+      int newmax = max + 10;
+      char *tmp = realloc(buf, newmax);
+      if (!tmp) {
+        free(buf);
+        return 0;
+      }
+      buf = tmp;
+      max = newmax;
+    }
+
+    int ch = *s;
+    if (ch == '"') {
+      *p++ = ch;
+    }
+    *p++ = ch;
+  }
+
+  *p++ = '"';
+  *p++ = 0;
+
+  return buf;
+}
+
+char *sexp_to_text(sexp_object_t *obj) {
+  sexp_string_t *str;
+  sexp_list_t *list;
+
+  str = sexp_to_string(obj);
+  if (str) {
+    return need_quote(str->ptr) ? quote(str->ptr) : strdup(str->ptr);
+  }
+
+  list = sexp_to_list(obj);
+  if (list) {
+    const int top = list->top;
+    char *vec[top];
+    memset(vec, 0, top * sizeof(*vec));
+
+    int ok = 1;
+    int total = 0;
+    char *ret = 0;
+    for (int i = 0; i < top; i++) {
+      vec[i] = sexp_to_text(list->vec[i]);
+      ok = ok && (vec[i] != 0);
+      if (ok) {
+        total += strlen(vec[i]) + 1; // for vec[i] and a space
+      }
+    }
+    if (ok) {
+      ret = malloc(total + 3); // for '(' and ')' and NUL
+      ok = (ret != 0);
+    }
+    if (ok) {
+      char *p = ret;
+      *p++ = '(';
+      for (int i = 0; i < top; i++) {
+        sprintf(p, "%s%s", (i > 0) ? " " : "", vec[i]);
+        p += strlen(p);
+      }
+      *p++ = ')';
+      *p++ = 0;
+      assert(p - ret <= total);
+    }
+    for (int i = 0; i < top; i++) {
+      free(vec[i]);
+    }
+    return ok ? ret : 0;
+  }
+
+  return 0;
+}
+
+void sexp_release(sexp_object_t *obj) {
+  sexp_string_t *str;
+  sexp_list_t *list;
+
+  list = sexp_to_list(obj);
+  if (list) {
+    for (int i = 0; i < list->top; i++) {
+      free(list->vec[i]);
+    }
+    free(list->vec);
+    free(list);
+    return;
+  }
+
+  str = sexp_to_string(obj);
+  if (str) {
+    free(str->ptr);
+    free(str);
+    return;
+  }
+}
+
+sexp_list_t *sexp_list_create() {
+  sexp_list_t *list = calloc(1, sizeof(*list));
+  if (!list) {
+    return 0;
+  }
+
+  list->type = 'L';
+  return list;
+}
+
+int sexp_list_append_object(sexp_list_t *list, sexp_object_t *obj) {
+  assert(list->type == 'L');
+  if (list->top >= list->max) {
+    int newmax = list->max * 1.5 + 4;
+    sexp_object_t **newvec = realloc(list->vec, sizeof(*list->vec) * newmax);
+    if (!newvec) {
+      return -1;
+    }
+    list->vec = newvec;
+    list->max = newmax;
+  }
+  assert(list->top < list->max);
+  list->vec[list->top++] = obj;
+  return 0;
+}
 
 typedef struct token_t token_t;
 struct token_t {
@@ -11,7 +161,7 @@ struct token_t {
 };
 
 static token_t token_make(char type, const char *p, int plen) {
-  assert(strchr(" ()s", type) || type == -1);
+  assert(strchr(" ()se", type));
   token_t t = {type, p, plen};
   return t;
 }
@@ -89,7 +239,7 @@ static sexp_object_t *parse_string(parser_t *pp) {
   }
 
   ret->type = 'S';
-  ret->str = p;
+  ret->ptr = p;
   return (sexp_object_t *)ret;
 }
 
@@ -107,8 +257,9 @@ static sexp_object_t *parse_list(parser_t *pp) {
     goto bail;
   }
   // skip white space after (
-  while (scan_match(sp, ' '))
+  while (scan_match(sp, ' ')) {
     ;
+  }
 
   // is this an empty list ?
   if (!scan_match(sp, ')')) {
@@ -171,6 +322,13 @@ sexp_object_t *sexp_parse(const char *buf, int len, const char **endp) {
   parser_t parser;
   parse_init(&parser, buf, len);
   sexp_object_t *ox = parse_next(&parser);
+  if (ox) {
+    // skip all whitespace after parsed expression
+    while (scan_match(&parser.scanner, ' ')) {
+      ;
+    }
+  }
+
   *endp = parser.scanner.ptr;
   return ox;
 }

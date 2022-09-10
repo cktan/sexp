@@ -1,8 +1,6 @@
 #ifndef SEXP_H
 #define SEXP_H
 
-#include <assert.h>
-
 typedef struct sexp_list_t sexp_list_t;
 typedef struct sexp_string_t sexp_string_t;
 typedef struct sexp_object_t sexp_object_t;
@@ -19,15 +17,13 @@ struct sexp_list_t {
 
 struct sexp_string_t {
   int type;
-  char *str;
+  char *ptr;
 };
 
 static inline sexp_list_t *sexp_to_list(sexp_object_t *obj) {
-  assert(obj->type == 'L');
   return (sexp_list_t *)(obj->type == 'L' ? obj : 0);
 }
 static inline sexp_string_t *sexp_to_string(sexp_object_t *obj) {
-  assert(obj->type == 'S');
   return (sexp_string_t *)(obj->type == 'S' ? obj : 0);
 }
 
