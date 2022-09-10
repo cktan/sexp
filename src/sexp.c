@@ -113,7 +113,7 @@ void sexp_release(sexp_object_t *obj) {
   list = sexp_to_list(obj);
   if (list) {
     for (int i = 0; i < list->top; i++) {
-      free(list->vec[i]);
+      sexp_release(list->vec[i]);
     }
     free(list->vec);
     free(list);
