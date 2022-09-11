@@ -166,6 +166,21 @@ int sexp_list_append_object(sexp_list_t *list, sexp_object_t *obj) {
   return 0;
 }
 
+
+sexp_string_t* sexp_string_create(const char* str) {
+  sexp_string_t* p = calloc(1, sizeof(*p));
+  if (p) {
+    p->type = 'S';
+    p->ptr = strdup(str);
+    if (!p->ptr) {
+      free(p);
+      p = 0;
+    }
+  }
+  return p;
+}
+
+
 typedef struct token_t token_t;
 struct token_t {
   char type;       // [' ', '(', ')', 's', 'e'] s: string, e: eof
