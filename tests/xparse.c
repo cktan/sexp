@@ -32,10 +32,10 @@ int main(int argc, const char **argv) {
 
   const char *s = readfile(argv[1]);
   const char *endp;
-  sx_parse_error_t err;
-  sx_object_t *ox = sx_parse(s, strlen(s), &endp, &err);
+  xex_parse_error_t err;
+  xex_object_t *ox = xex_parse(s, strlen(s), &endp, &err);
   if (!ox) {
-    fprintf(stderr, "sx_parse failed\n");
+    fprintf(stderr, "xex_parse failed\n");
     if (err.linenum) {
       fprintf(stderr, "    %s\n", err.errmsg);
       fprintf(stderr, "    near line %d character %d\n", err.linenum,
@@ -43,9 +43,9 @@ int main(int argc, const char **argv) {
     }
     exit(1);
   }
-  const char *p = sx_to_text(ox);
+  const char *p = xex_to_text(ox);
   if (!p) {
-    fprintf(stderr, "sx_to_text failed\n");
+    fprintf(stderr, "xex_to_text failed\n");
     exit(1);
   }
   printf("%s\n", p);
@@ -58,6 +58,6 @@ int main(int argc, const char **argv) {
 
   free((void *)p);
   free((void *)s);
-  sx_release(ox);
+  xex_release(ox);
   return 0;
 }

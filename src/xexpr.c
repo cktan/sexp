@@ -82,16 +82,16 @@ static int quote(const char *s, acc_t* acc) {
   return 0;
 }
 
-static int to_text(sx_object_t* obj, acc_t* acc) {
-  sx_string_t *str;
-  sx_list_t *list;
+static int to_text(xex_object_t* obj, acc_t* acc) {
+  xex_string_t *str;
+  xex_list_t *list;
 
-  str = sx_to_string(obj);
+  str = xex_to_string(obj);
   if (str) {
     return need_quote(str->ptr) ? quote(str->ptr, acc) : accput(acc, str->ptr, strlen(str->ptr));
   }
 
-  list = sx_to_list(obj);
+  list = xex_to_list(obj);
   if (list) {
     CHECK(0 == accput(acc, "(", 1));
     for (int i = 0, top = list->top; i < top; i++) {
@@ -107,7 +107,7 @@ static int to_text(sx_object_t* obj, acc_t* acc) {
 }
 
 
-char *sx_to_text(sx_object_t *obj) {
+char *xex_to_text(xex_object_t *obj) {
   acc_t acc = {0};
   CHECKBAIL(0 == to_text(obj, &acc));
   CHECKBAIL(0 == accput(&acc, "", 1));
@@ -118,21 +118,21 @@ char *sx_to_text(sx_object_t *obj) {
   return 0;
 }
 
-void sx_release(sx_object_t *obj) {
-  sx_string_t *str;
-  sx_list_t *list;
+void xex_release(xex_object_t *obj) {
+  xex_string_t *str;
+  xex_list_t *list;
 
-  list = sx_to_list(obj);
+  list = xex_to_list(obj);
   if (list) {
     for (int i = 0; i < list->top; i++) {
-      sx_release(list->vec[i]);
+      xex_release(list->vec[i]);
     }
     free(list->vec);
     free(list);
     return;
   }
 
-  str = sx_to_string(obj);
+  str = xex_to_string(obj);
   if (str) {
     free(str->ptr);
     free(str);
@@ -140,8 +140,8 @@ void sx_release(sx_object_t *obj) {
   }
 }
 
-sx_list_t *sx_list_create() {
-  sx_list_t *list = calloc(1, sizeof(*list));
+xex_list_t *xex_list_create() {
+  xex_list_t *list = calloc(1, sizeof(*list));
   if (!list) {
     return 0;
   }
@@ -150,11 +150,11 @@ sx_list_t *sx_list_create() {
   return list;
 }
 
-int sx_list_append_object(sx_list_t *list, sx_object_t *obj) {
+int xex_list_append_object(xex_list_t *list, xex_object_t *obj) {
   assert(list->type == 'L');
   if (list->top >= list->max) {
     int newmax = list->max * 1.5 + 4;
-    sx_object_t **newvec = realloc(list->vec, sizeof(*list->vec) * newmax);
+    xex_object_t **newvec = realloc(list->vec, sizeof(*list->vec) * newmax);
     if (!newvec) {
       return -1;
     }
@@ -166,20 +166,20 @@ int sx_list_append_object(sx_list_t *list, sx_object_t *obj) {
   return 0;
 }
 
-int sx_list_append_list(sx_list_t* list, sx_list_t* lx) {
+int xex_list_append_list(xex_list_t* list, xex_list_t* lx) {
   assert(lx->type == 'L');
-  return sx_list_append_object(list, (sx_object_t*) lx);
+  return xex_list_append_object(list, (xex_object_t*) lx);
 }
 
-int sx_list_append_string(sx_list_t* list, const char* s) {
-  sx_string_t* sx = sx_string_create(s);
+int xex_list_append_string(xex_list_t* list, const char* s) {
+  xex_string_t* sx = xex_string_create(s);
   CHECK(sx);
-  return sx_list_append_object(list, (sx_object_t*) sx);
+  return xex_list_append_object(list, (xex_object_t*) sx);
 }
 
 
-sx_string_t* sx_string_create(const char* str) {
-  sx_string_t* p = calloc(1, sizeof(*p));
+xex_string_t* xex_string_create(const char* str) {
+  xex_string_t* p = calloc(1, sizeof(*p));
   if (p) {
     p->type = 'S';
     p->ptr = strdup(str);
@@ -228,16 +228,16 @@ struct parser_t {
   char errbuf[200];
 };
 static void parse_init(parser_t *pp, const char *buf, int len);
-static sx_object_t *parse_next(parser_t *pp);
-static sx_object_t *parse_list(parser_t *pp);
-static sx_object_t *parse_string(parser_t *pp);
+static xex_object_t *parse_next(parser_t *pp);
+static xex_object_t *parse_list(parser_t *pp);
+static xex_object_t *parse_string(parser_t *pp);
 
 static void parse_init(parser_t *pp, const char *buf, int len) {
   scan_init(&pp->scanner, buf, len, pp->errbuf, sizeof(pp->errbuf));
   pp->errbuf[0] = 0;
 }
 
-static sx_object_t *parse_string(parser_t *pp) {
+static xex_object_t *parse_string(parser_t *pp) {
   token_t *tok = scan_match(&pp->scanner, 's');
   if (!tok) {
     return 0;
@@ -275,7 +275,7 @@ static sx_object_t *parse_string(parser_t *pp) {
     *curr = 0;
   }
 
-  sx_string_t *ret = malloc(sizeof(*ret));
+  xex_string_t *ret = malloc(sizeof(*ret));
   if (!ret) {
     free(p);
     return 0;
@@ -283,12 +283,12 @@ static sx_object_t *parse_string(parser_t *pp) {
 
   ret->type = 'S';
   ret->ptr = p;
-  return (sx_object_t *)ret;
+  return (xex_object_t *)ret;
 }
 
-static sx_object_t *parse_list(parser_t *pp) {
-  sx_list_t *list = 0;
-  sx_object_t *obj = 0;
+static xex_object_t *parse_list(parser_t *pp) {
+  xex_list_t *list = 0;
+  xex_object_t *obj = 0;
 
   // parse ( [WS] [ item WS item WS item [WS] ] )
   scanner_t *sp = &pp->scanner;
@@ -296,7 +296,7 @@ static sx_object_t *parse_list(parser_t *pp) {
     snprintf(pp->errbuf, sizeof(pp->errbuf), "internal error");
     goto bail;
   }
-  list = sx_list_create();
+  list = xex_list_create();
   if (!list) {
     snprintf(pp->errbuf, sizeof(pp->errbuf), "out of memory");
     goto bail;
@@ -314,7 +314,7 @@ static sx_object_t *parse_list(parser_t *pp) {
       if (!obj) {
         goto bail;
       }
-      if (sx_list_append_object(list, obj)) {
+      if (xex_list_append_object(list, obj)) {
 	snprintf(pp->errbuf,sizeof(pp->errbuf),"out of memory");
         goto bail;
       }
@@ -331,19 +331,19 @@ static sx_object_t *parse_list(parser_t *pp) {
     }
   }
 
-  return (sx_object_t *)list;
+  return (xex_object_t *)list;
 
 bail:
   if (obj) {
-    sx_release(obj);
+    xex_release(obj);
   }
   if (list) {
-    sx_release((sx_object_t *)list);
+    xex_release((xex_object_t *)list);
   }
   return 0;
 }
 
-static sx_object_t *parse_next(parser_t *pp) {
+static xex_object_t *parse_next(parser_t *pp) {
 again:
   scanner_t *sp = &pp->scanner;
   token_t *tok = scan_peek(sp);
@@ -365,10 +365,10 @@ again:
   }
 }
 
-sx_object_t *sx_parse(const char *buf, int len, const char **endp, sx_parse_error_t* err) {
+xex_object_t *xex_parse(const char *buf, int len, const char **endp, xex_parse_error_t* err) {
   parser_t parser;
   parse_init(&parser, buf, len);
-  sx_object_t *ox = parse_next(&parser);
+  xex_object_t *ox = parse_next(&parser);
   if (!ox) {
     snprintf(err->errmsg, sizeof(err->errmsg), "%s",
 	     parser.errbuf[0] ? parser.errbuf : "unknown error");
