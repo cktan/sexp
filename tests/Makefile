@@ -15,7 +15,7 @@ CFLAGS += -std=c99
 
 all: $(EXECS)
 
-xparse: xparse.c ../src/libsexpr.a
+xparse: xparse.c ../src/libxexpr.a
 	$(CC) $(CFLAGS) -o $@ $(filter-out %.h, $^) $(LDFLAGS) $(LDLIBS)
 
 clean:

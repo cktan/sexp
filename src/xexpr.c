@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
-#include "sexpr.h"
+#include "xexpr.h"
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
