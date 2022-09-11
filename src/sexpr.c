@@ -166,6 +166,17 @@ int sx_list_append_object(sx_list_t *list, sx_object_t *obj) {
   return 0;
 }
 
+int sx_list_append_list(sx_list_t* list, sx_list_t* lx) {
+  assert(lx->type == 'L');
+  return sx_list_append_object(list, (sx_object_t*) lx);
+}
+
+int sx_list_append_string(sx_list_t* list, const char* s) {
+  sx_string_t* sx = sx_string_create(s);
+  CHECK(sx);
+  return sx_list_append_object(list, (sx_object_t*) sx);
+}
+
 
 sx_string_t* sx_string_create(const char* str) {
   sx_string_t* p = calloc(1, sizeof(*p));
@@ -179,6 +190,7 @@ sx_string_t* sx_string_create(const char* str) {
   }
   return p;
 }
+
 
 
 typedef struct token_t token_t;

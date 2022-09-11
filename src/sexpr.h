@@ -34,9 +34,17 @@ sx_list_t *sx_list_create();
 int sx_list_append_object(sx_list_t *list, sx_object_t *obj);
 int sx_list_append_list(sx_list_t *list, sx_list_t *lx);
 int sx_list_append_string(sx_list_t *list, const char *str);
-int sx_list_length(sx_list_t *list);
-sx_object_t *sx_list_get(sx_list_t *list, int idx);
-const char *sx_list_get_string(sx_list_t *list, int idx);
+
+static inline int sx_list_length(sx_list_t *list) { return list->top; }
+
+static inline sx_object_t *sx_list_get(sx_list_t *list, int idx) {
+  return (0 <= idx && idx < list->top) ? list->vec[idx] : 0;
+}
+
+static inline const char *sx_list_get_string(sx_list_t *list, int idx) {
+  return (0 <= idx && idx < list->top) ? ((sx_string_t *)list->vec[idx])->ptr
+                                       : 0;
+}
 
 sx_string_t *sx_string_create(const char *str);
 
