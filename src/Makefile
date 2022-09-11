@@ -14,18 +14,18 @@ endif
 CFLAGS += -std=c99
 LDFLAGS = -L../ext/lib -Wl,-rpath='$$ORIGIN'/../ext/lib
 LDLIBS = 
-CFILES = sexp.c
+CFILES = sexpr.c
 
 OBJS = $(CFILES:.c=.o)
 EXECS = 
 
-all: libsexp.a $(EXECS) 
+all: libsexpr.a $(EXECS) 
 
 #xsanitize: xsanitize.cpp libexx.a sql_parser/libpg_query.a
 #	$(CXX) $(CXXFLAGS) -o $@ $(filter-out %.hpp %.h, $^) $(LDFLAGS) $(LDLIBS)
 
 
-libsexp.a: $(OBJS)
+libsexpr.a: $(OBJS)
 	ar -rcs $@ $^
 
 -include $(OBJS:%.o=%.d) $(EXECS:%=%.d)

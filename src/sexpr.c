@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
-#include "sexp.h"
+#include "sexpr.h"
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -82,16 +82,16 @@ static int quote(const char *s, acc_t* acc) {
   return 0;
 }
 
-static int to_text(sexp_object_t* obj, acc_t* acc) {
-  sexp_string_t *str;
-  sexp_list_t *list;
+static int to_text(sx_object_t* obj, acc_t* acc) {
+  sx_string_t *str;
+  sx_list_t *list;
 
-  str = sexp_to_string(obj);
+  str = sx_to_string(obj);
   if (str) {
     return need_quote(str->ptr) ? quote(str->ptr, acc) : accput(acc, str->ptr, strlen(str->ptr));
   }
 
-  list = sexp_to_list(obj);
+  list = sx_to_list(obj);
   if (list) {
     CHECK(0 == accput(acc, "(", 1));
     for (int i = 0, top = list->top; i < top; i++) {
@@ -107,7 +107,7 @@ static int to_text(sexp_object_t* obj, acc_t* acc) {
 }
 
 
-char *sexp_to_text(sexp_object_t *obj) {
+char *sx_to_text(sx_object_t *obj) {
   acc_t acc = {0};
   CHECKBAIL(0 == to_text(obj, &acc));
   CHECKBAIL(0 == accput(&acc, "", 1));
@@ -118,21 +118,21 @@ char *sexp_to_text(sexp_object_t *obj) {
   return 0;
 }
 
-void sexp_release(sexp_object_t *obj) {
-  sexp_string_t *str;
-  sexp_list_t *list;
+void sx_release(sx_object_t *obj) {
+  sx_string_t *str;
+  sx_list_t *list;
 
-  list = sexp_to_list(obj);
+  list = sx_to_list(obj);
   if (list) {
     for (int i = 0; i < list->top; i++) {
-      sexp_release(list->vec[i]);
+      sx_release(list->vec[i]);
     }
     free(list->vec);
     free(list);
     return;
   }
 
-  str = sexp_to_string(obj);
+  str = sx_to_string(obj);
   if (str) {
     free(str->ptr);
     free(str);
@@ -140,8 +140,8 @@ void sexp_release(sexp_object_t *obj) {
   }
 }
 
-sexp_list_t *sexp_list_create() {
-  sexp_list_t *list = calloc(1, sizeof(*list));
+sx_list_t *sx_list_create() {
+  sx_list_t *list = calloc(1, sizeof(*list));
   if (!list) {
     return 0;
   }
@@ -150,11 +150,11 @@ sexp_list_t *sexp_list_create() {
   return list;
 }
 
-int sexp_list_append_object(sexp_list_t *list, sexp_object_t *obj) {
+int sx_list_append_object(sx_list_t *list, sx_object_t *obj) {
   assert(list->type == 'L');
   if (list->top >= list->max) {
     int newmax = list->max * 1.5 + 4;
-    sexp_object_t **newvec = realloc(list->vec, sizeof(*list->vec) * newmax);
+    sx_object_t **newvec = realloc(list->vec, sizeof(*list->vec) * newmax);
     if (!newvec) {
       return -1;
     }
@@ -167,8 +167,8 @@ int sexp_list_append_object(sexp_list_t *list, sexp_object_t *obj) {
 }
 
 
-sexp_string_t* sexp_string_create(const char* str) {
-  sexp_string_t* p = calloc(1, sizeof(*p));
+sx_string_t* sx_string_create(const char* str) {
+  sx_string_t* p = calloc(1, sizeof(*p));
   if (p) {
     p->type = 'S';
     p->ptr = strdup(str);
@@ -213,16 +213,16 @@ struct parser_t {
   char errbuf[200];
 };
 static void parse_init(parser_t *pp, const char *buf, int len);
-static sexp_object_t *parse_next(parser_t *pp);
-static sexp_object_t *parse_list(parser_t *pp);
-static sexp_object_t *parse_string(parser_t *pp);
+static sx_object_t *parse_next(parser_t *pp);
+static sx_object_t *parse_list(parser_t *pp);
+static sx_object_t *parse_string(parser_t *pp);
 
 static void parse_init(parser_t *pp, const char *buf, int len) {
   scan_init(&pp->scanner, buf, len);
   pp->errbuf[0] = 0;
 }
 
-static sexp_object_t *parse_string(parser_t *pp) {
+static sx_object_t *parse_string(parser_t *pp) {
   token_t *tok = scan_match(&pp->scanner, 's');
   if (!tok) {
     return 0;
@@ -260,7 +260,7 @@ static sexp_object_t *parse_string(parser_t *pp) {
     *curr = 0;
   }
 
-  sexp_string_t *ret = malloc(sizeof(*ret));
+  sx_string_t *ret = malloc(sizeof(*ret));
   if (!ret) {
     free(p);
     return 0;
@@ -268,19 +268,19 @@ static sexp_object_t *parse_string(parser_t *pp) {
 
   ret->type = 'S';
   ret->ptr = p;
-  return (sexp_object_t *)ret;
+  return (sx_object_t *)ret;
 }
 
-static sexp_object_t *parse_list(parser_t *pp) {
-  sexp_list_t *list = 0;
-  sexp_object_t *obj = 0;
+static sx_object_t *parse_list(parser_t *pp) {
+  sx_list_t *list = 0;
+  sx_object_t *obj = 0;
 
   // parse ( [WS] [ item WS item WS item [WS] ] )
   scanner_t *sp = &pp->scanner;
   if (!scan_match(sp, '(')) {
     goto bail;
   }
-  list = sexp_list_create();
+  list = sx_list_create();
   if (!list) {
     goto bail;
   }
@@ -297,7 +297,7 @@ static sexp_object_t *parse_list(parser_t *pp) {
       if (!obj) {
         goto bail;
       }
-      if (sexp_list_append_object(list, obj)) {
+      if (sx_list_append_object(list, obj)) {
         goto bail;
       }
       obj = 0;
@@ -312,19 +312,19 @@ static sexp_object_t *parse_list(parser_t *pp) {
     }
   }
 
-  return (sexp_object_t *)list;
+  return (sx_object_t *)list;
 
 bail:
   if (obj) {
-    sexp_release(obj);
+    sx_release(obj);
   }
   if (list) {
-    sexp_release((sexp_object_t *)list);
+    sx_release((sx_object_t *)list);
   }
   return 0;
 }
 
-static sexp_object_t *parse_next(parser_t *pp) {
+static sx_object_t *parse_next(parser_t *pp) {
 again:
   scanner_t *sp = &pp->scanner;
   token_t *tok = scan_peek(sp);
@@ -346,10 +346,10 @@ again:
   }
 }
 
-sexp_object_t *sexp_parse(const char *buf, int len, const char **endp) {
+sx_object_t *sx_parse(const char *buf, int len, const char **endp) {
   parser_t parser;
   parse_init(&parser, buf, len);
-  sexp_object_t *ox = parse_next(&parser);
+  sx_object_t *ox = parse_next(&parser);
   if (ox) {
     // skip all whitespace after parsed expression
     while (scan_match(&parser.scanner, ' ')) {

@@ -1,4 +1,4 @@
-#include "sexp.h"
+#include "sexpr.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,14 +32,14 @@ int main(int argc, const char **argv) {
 
   const char *s = readfile(argv[1]);
   const char *endp;
-  sexp_object_t *ox = sexp_parse(s, strlen(s), &endp);
+  sx_object_t *ox = sx_parse(s, strlen(s), &endp);
   if (!ox) {
-    fprintf(stderr, "sexp_parse failed\n");
+    fprintf(stderr, "sx_parse failed\n");
     exit(1);
   }
-  const char *p = sexp_to_text(ox);
+  const char *p = sx_to_text(ox);
   if (!p) {
-    fprintf(stderr, "sexp_to_text failed\n");
+    fprintf(stderr, "sx_to_text failed\n");
     exit(1);
   }
   printf("%s\n", p);
@@ -52,6 +52,6 @@ int main(int argc, const char **argv) {
 
   free((void *)p);
   free((void *)s);
-  sexp_release(ox);
+  sx_release(ox);
   return 0;
 }
