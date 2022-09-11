@@ -200,9 +200,12 @@ struct scanner_t {
   const char *end;
   int putback;
   token_t token;
+  char* errbuf;
+  int errbuflen;
 };
 
-static void scan_init(scanner_t *sp, const char *p, int plen);
+static void scan_init(scanner_t *sp, const char *p, int plen,
+		      char* errbuf, int errbuflen);
 static token_t *scan_next(scanner_t *sp);
 static token_t *scan_match(scanner_t *sp, int type);
 static token_t *scan_peek(scanner_t *sp);
@@ -218,7 +221,7 @@ static sx_object_t *parse_list(parser_t *pp);
 static sx_object_t *parse_string(parser_t *pp);
 
 static void parse_init(parser_t *pp, const char *buf, int len) {
-  scan_init(&pp->scanner, buf, len);
+  scan_init(&pp->scanner, buf, len, pp->errbuf, sizeof(pp->errbuf));
   pp->errbuf[0] = 0;
 }
 
@@ -278,10 +281,12 @@ static sx_object_t *parse_list(parser_t *pp) {
   // parse ( [WS] [ item WS item WS item [WS] ] )
   scanner_t *sp = &pp->scanner;
   if (!scan_match(sp, '(')) {
+    snprintf(pp->errbuf, sizeof(pp->errbuf), "internal error");
     goto bail;
   }
   list = sx_list_create();
   if (!list) {
+    snprintf(pp->errbuf, sizeof(pp->errbuf), "out of memory");
     goto bail;
   }
   // skip white space after (
@@ -298,6 +303,7 @@ static sx_object_t *parse_list(parser_t *pp) {
         goto bail;
       }
       if (sx_list_append_object(list, obj)) {
+	snprintf(pp->errbuf,sizeof(pp->errbuf),"out of memory");
         goto bail;
       }
       obj = 0;
@@ -307,6 +313,7 @@ static sx_object_t *parse_list(parser_t *pp) {
         break;
       }
       if (!has_space) {
+	snprintf(pp->errbuf, sizeof(pp->errbuf), "syntax error: need a space separator between list items");
         goto bail;
       }
     }
@@ -333,7 +340,7 @@ again:
   }
   switch (tok->type) {
   case ' ':
-    scan_next(sp);
+    scan_next(sp);  // skip over spaces
     goto again;
   case 's':
     return parse_string(pp);
@@ -346,11 +353,26 @@ again:
   }
 }
 
-sx_object_t *sx_parse(const char *buf, int len, const char **endp) {
+sx_object_t *sx_parse(const char *buf, int len, const char **endp, sx_parse_error_t* err) {
   parser_t parser;
   parse_init(&parser, buf, len);
   sx_object_t *ox = parse_next(&parser);
-  if (ox) {
+  if (!ox) {
+    snprintf(err->errmsg, sizeof(err->errmsg), "%s",
+	     parser.errbuf[0] ? parser.errbuf : "unknown error");
+    int linenum = 1;
+    int lineoff = 0;
+    for (const char* p = buf; p < parser.scanner.ptr && p < buf + len; p++) {
+      if (*p == '\n') {
+	linenum++;
+	lineoff = 0;
+      } else {
+	lineoff++;
+      }
+    }
+    err->linenum = linenum;
+    err->lineoff = lineoff;
+  } else {
     // skip all whitespace after parsed expression
     while (scan_match(&parser.scanner, ' ')) {
       ;
@@ -366,10 +388,12 @@ static token_t *_scan_unquoted(scanner_t *sp);
 static token_t *_scan_whitespace(scanner_t *sp);
 static token_t *_scan_comment(scanner_t *sp);
 
-static void scan_init(scanner_t *sp, const char *p, int plen) {
+static void scan_init(scanner_t *sp, const char *p, int plen, char* errbuf, int errbuflen) {
   memset(sp, 0, sizeof(*sp));
   sp->ptr = p;
   sp->end = p + plen;
+  sp->errbuf = errbuf;
+  sp->errbuflen = errbuflen;
 }
 
 static token_t *scan_peek(scanner_t *sp) {
@@ -404,6 +428,8 @@ static token_t* scan_match_any(scanner_t* sp, const char* types) {
 */
 
 static token_t *scan_next(scanner_t *sp) {
+  sp->errbuf[0] = 0;
+  
   if (sp->putback) {
     sp->putback = 0;
     return &sp->token;
@@ -452,6 +478,7 @@ static token_t *_scan_quoted(scanner_t *sp) {
   }
   if (p >= q) {
     // unterminated quote
+    snprintf(sp->errbuf, sp->errbuflen, "syntax error: unterminated double-quote");
     return 0;
   }
   assert(*p == '"');
@@ -488,6 +515,7 @@ static token_t *_scan_whitespace(scanner_t *sp) {
   return &sp->token;
 }
 
+// note: this function will return a whitespace token
 static token_t *_scan_comment(scanner_t *sp) {
   assert(';' == *sp->ptr);
   const char *p = sp->ptr;

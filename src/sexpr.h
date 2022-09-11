@@ -42,7 +42,15 @@ sx_string_t *sx_string_create(const char *str);
 
 void sx_release(sx_object_t *obj);
 
-sx_object_t *sx_parse(const char *buf, int len, const char **endp);
+typedef struct sx_parse_error_t sx_parse_error_t;
+struct sx_parse_error_t {
+  char errmsg[200];
+  int linenum;
+  int lineoff;
+};
+
+sx_object_t *sx_parse(const char *buf, int len, const char **endp,
+                      sx_parse_error_t *err);
 char *sx_to_text(sx_object_t *obj);
 
 #endif /* SEXPR_H */
