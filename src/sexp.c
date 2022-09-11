@@ -13,6 +13,7 @@
 // clang-format on    
 
 
+// Accumulator
 typedef struct acc_t acc_t;
 struct acc_t {
   char* ptr;
@@ -20,6 +21,7 @@ struct acc_t {
 };
 
 
+// add p[] to the accumulator
 static int accput(acc_t* acc, const char* p, int len) {
   if (acc->top + len >= acc->max) {
     int newmax = acc->max * 1.5 + len + 1;
