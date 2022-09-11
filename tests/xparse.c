@@ -56,8 +56,24 @@ int main(int argc, const char **argv) {
     exit(1);
   }
 
+  xex_object_t *copy = xex_dup(ox);
+  if (!xex_equal(copy, ox)) {
+    fprintf(stderr, "\n");
+    fprintf(stderr, "Error: xex_equal fails\n");
+    exit(1);
+  }
+
+  const char *pp = xex_to_text(copy);
+  if (!(0 == strcmp(p, pp))) {
+    fprintf(stderr, "\n");
+    fprintf(stderr, "Error: copied object is different from source\n");
+    exit(1);
+  }
+
+  free((void *)pp);
   free((void *)p);
   free((void *)s);
   xex_release(ox);
+  xex_release(copy);
   return 0;
 }

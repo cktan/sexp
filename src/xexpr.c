@@ -118,6 +118,58 @@ char *xex_to_text(xex_object_t *obj) {
   return 0;
 }
 
+
+xex_object_t* xex_dup(xex_object_t* obj) {
+
+  xex_string_t* str = 0;
+  xex_list_t* lst = 0;
+
+  if (0 != (str = xex_to_string(obj))) {
+    return (xex_object_t*) xex_string_create(str->ptr);
+  }
+
+  if (0 != (lst = xex_to_list(obj))) {
+    xex_list_t* ret = xex_list_create();
+    CHECKP(ret);
+
+    for (int i = 0, top = lst->top; i < top; i++) {
+      xex_object_t* ox = xex_list_get(lst, i);
+      CHECKP(ox);
+      CHECKP(0 == xex_list_append_object(ret, ox));
+    }
+
+    return (xex_object_t*) ret;
+  }
+  
+  return 0;
+}
+
+
+int xex_equal(xex_object_t* x, xex_object_t* y) {
+  xex_string_t* xstr = 0;
+  xex_string_t* ystr = 0;
+  xex_list_t* xlst = 0;
+  xex_list_t* ylst = 0;
+
+  if (0 != (xstr = xex_to_string(x))) {
+    ystr = xex_to_string(y);
+    CHECK(ystr);
+    return 0 == strcmp(xstr->ptr, ystr->ptr);
+  }
+
+  if (0 != (xlst = xex_to_list(x))) {
+    ylst = xex_to_list(x);
+    CHECK(ylst);
+    CHECK(xlst->top == ylst->top);
+    for (int i = 0, top = xlst->top; i < top; i++) {
+      CHECK(xex_equal(xlst->vec[i], ylst->vec[i]));
+    }
+    return 1;
+  }
+
+  return 0;
+}
+
 void xex_release(xex_object_t *obj) {
   xex_string_t *str;
   xex_list_t *list;
