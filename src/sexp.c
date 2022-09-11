@@ -6,6 +6,39 @@
 #include <stdlib.h>
 #include <string.h>
 
+// clang-format off
+#define CHECK(x)  if (x); else return -1
+#define CHECKP(x) if (x); else return NULL
+#define CHECKBAIL(x) if (x); else goto bail
+// clang-format on    
+
+
+typedef struct acc_t acc_t;
+struct acc_t {
+  char* ptr;
+  int top, max;
+};
+
+
+static int accput(acc_t* acc, const char* p, int len) {
+  if (acc->top + len >= acc->max) {
+    int newmax = acc->max * 1.5 + len + 1;
+    newmax = (newmax < 16 ? 16 : newmax); // minimum 16
+    char* newptr = realloc(acc->ptr, newmax);
+    if (!newptr) {
+      return -1;
+    }
+    acc->ptr = newptr;
+    acc->max = newmax;
+  }
+  
+  assert(acc->top + len < acc->max);
+  memcpy(acc->ptr + acc->top, p, len);
+  acc->top += len;
+  return 0;
+}
+
+
 static int need_quote(const char *s) {
   int special = (*s == 0);
   for (; *s; s++) {
@@ -22,87 +55,64 @@ static int need_quote(const char *s) {
   return special;
 }
 
-static char *quote(const char *s) {
-  int max = strlen(s) + 10;
-  char *buf = malloc(max);
-  if (!buf) {
-    return 0;
-  }
-  char *p = buf;
-  *p++ = '"';
+static int quote(const char *s, acc_t* acc) {
+  // add the first "
+  CHECK(0 == accput(acc, "\"", 1));
 
-  for (; *s; s++) {
-    if (p - buf >= max - 5) {
-      int newmax = max + 10;
-      char *tmp = realloc(buf, newmax);
-      if (!tmp) {
-        free(buf);
-        return 0;
-      }
-      buf = tmp;
-      max = newmax;
+  for (;;) {
+    // if there is no quote, put the whole s[] into acc, and done with s[].
+    char* p = strchr(s, '"');
+    if (!p) {
+      CHECK(0 == accput(acc, s, strlen(s)));
+      break; 
     }
 
-    int ch = *s;
-    if (ch == '"') {
-      *p++ = ch;
-    }
-    *p++ = ch;
+    // put s[] up to the quote into acc
+    CHECK(0 == accput(acc, s, p - s + 1));
+    // add an extra "
+    CHECK(0 == accput(acc, "\"", 1));
+    // continue to the next segment of s[]
+    s = p + 1;
   }
 
-  *p++ = '"';
-  *p++ = 0;
-
-  return buf;
+  // add the final "
+  CHECK(0 == accput(acc, "\"", 1));
+  return 0;
 }
 
-char *sexp_to_text(sexp_object_t *obj) {
+static int to_text(sexp_object_t* obj, acc_t* acc) {
   sexp_string_t *str;
   sexp_list_t *list;
 
   str = sexp_to_string(obj);
   if (str) {
-    return need_quote(str->ptr) ? quote(str->ptr) : strdup(str->ptr);
+    return need_quote(str->ptr) ? quote(str->ptr, acc) : accput(acc, str->ptr, strlen(str->ptr));
   }
 
   list = sexp_to_list(obj);
   if (list) {
-    const int top = list->top;
-    char *vec[top];
-    memset(vec, 0, top * sizeof(*vec));
-
-    int ok = 1;
-    int total = 0;
-    char *ret = 0;
-    for (int i = 0; i < top; i++) {
-      vec[i] = sexp_to_text(list->vec[i]);
-      ok = ok && (vec[i] != 0);
-      if (ok) {
-        total += strlen(vec[i]) + 1; // for vec[i] and a space
+    CHECK(0 == accput(acc, "(", 1));
+    for (int i = 0, top = list->top; i < top; i++) {
+      if (i > 0) {
+	CHECK(0 == accput(acc, " ", 1));
       }
+      CHECK(0 == to_text(list->vec[i], acc));
     }
-    if (ok) {
-      total += 3; // for '(' and ')' and NUL
-      ret = malloc(total + 3);
-      ok = (ret != 0);
-    }
-    if (ok) {
-      char *p = ret;
-      *p++ = '(';
-      for (int i = 0; i < top; i++) {
-        sprintf(p, "%s%s", (i > 0) ? " " : "", vec[i]);
-        p += strlen(p);
-      }
-      *p++ = ')';
-      *p++ = 0;
-      assert(p - ret <= total);
-    }
-    for (int i = 0; i < top; i++) {
-      free(vec[i]);
-    }
-    return ok ? ret : 0;
+    CHECK(0 == accput(acc, ")", 1));
   }
 
+  return 0;
+}
+
+
+char *sexp_to_text(sexp_object_t *obj) {
+  acc_t acc = {0};
+  CHECKBAIL(0 == to_text(obj, &acc));
+  CHECKBAIL(0 == accput(&acc, "", 1));
+  return acc.ptr;
+
+ bail:
+  free(acc.ptr);
   return 0;
 }
 
