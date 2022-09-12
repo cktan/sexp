@@ -12,6 +12,36 @@
 #define CHECKBAIL(x) if (x); else goto bail
 // clang-format on    
 
+static void *(*xex_malloc)(size_t) = malloc;
+static void (*xex_free)(void*) = free;
+
+void xex_set_memutil(void *(*mymalloc)(size_t), void (*myfree)(void *)) {
+  if (mymalloc) {
+    xex_malloc = mymalloc;
+  }
+  if (myfree) {
+    xex_free = myfree;
+  }
+}
+
+#define ALIGN8(sz) (((sz) + 7) & ~7)
+
+#define malloc(x) error - forbidden - use MALLOC instead
+#define MALLOC(a) xex_malloc(a)
+
+#define free(x) error - forbidden - use FREE instead
+#define FREE(a) xex_free(a)
+
+#define calloc(x, y) error - forbidden - use CALLOC instead
+static void *CALLOC(size_t nmemb, size_t sz) {
+  int nb = ALIGN8(sz) * nmemb;
+  void *p = MALLOC(nb);
+  if (p) {
+    memset(p, 0, nb);
+  }
+  return p;
+}
+
 
 // Accumulator
 typedef struct acc_t acc_t;
@@ -26,10 +56,12 @@ static int accput(acc_t* acc, const char* p, int len) {
   if (acc->top + len >= acc->max) {
     int newmax = acc->max * 1.5 + len + 1;
     newmax = (newmax < 16 ? 16 : newmax); // minimum 16
-    char* newptr = realloc(acc->ptr, newmax);
+    char* newptr = MALLOC(newmax);
     if (!newptr) {
       return -1;
     }
+    memcpy(newptr, acc->ptr, acc->max);
+    FREE(acc->ptr);
     acc->ptr = newptr;
     acc->max = newmax;
   }
@@ -114,7 +146,7 @@ char *xex_to_text(xex_object_t *obj) {
   return acc.ptr;
 
  bail:
-  free(acc.ptr);
+  FREE(acc.ptr);
   return 0;
 }
 
@@ -236,21 +268,21 @@ void xex_release(xex_object_t *obj) {
     for (int i = 0; i < list->top; i++) {
       xex_release(list->vec[i]);
     }
-    free(list->vec);
-    free(list);
+    FREE(list->vec);
+    FREE(list);
     return;
   }
 
   str = xex_to_string(obj);
   if (str) {
-    free(str->ptr);
-    free(str);
+    FREE(str->ptr);
+    FREE(str);
     return;
   }
 }
 
 xex_list_t *xex_list_create() {
-  xex_list_t *list = calloc(1, sizeof(*list));
+  xex_list_t *list = CALLOC(1, sizeof(*list));
   if (!list) {
     return 0;
   }
@@ -263,10 +295,12 @@ int xex_list_append_object(xex_list_t *list, xex_object_t *obj) {
   assert(list->type == 'L');
   if (list->top >= list->max) {
     int newmax = list->max * 1.5 + 4;
-    xex_object_t **newvec = realloc(list->vec, sizeof(*list->vec) * newmax);
+    xex_object_t **newvec = MALLOC(newmax * sizeof(*newvec));
     if (!newvec) {
       return -1;
     }
+    memcpy(newvec, list->vec, list->max * sizeof(*newvec));
+    FREE(list->vec);
     list->vec = newvec;
     list->max = newmax;
   }
@@ -288,12 +322,12 @@ int xex_list_append_string(xex_list_t* list, const char* s) {
 
 
 xex_string_t* xex_string_create(const char* str) {
-  xex_string_t* p = calloc(1, sizeof(*p));
+  xex_string_t* p = CALLOC(1, sizeof(*p));
   if (p) {
     p->type = 'S';
     p->ptr = strdup(str);
     if (!p->ptr) {
-      free(p);
+      FREE(p);
       p = 0;
     }
   }
@@ -362,7 +396,7 @@ static xex_object_t *parse_string(parser_t *pp) {
   }
 
   // make a copy of s, and add extra byte for NUL
-  char *p = malloc(len + 1);
+  char *p = MALLOC(len + 1);
   if (!p) {
     return 0;
   }
@@ -384,9 +418,9 @@ static xex_object_t *parse_string(parser_t *pp) {
     *curr = 0;
   }
 
-  xex_string_t *ret = malloc(sizeof(*ret));
+  xex_string_t *ret = MALLOC(sizeof(*ret));
   if (!ret) {
-    free(p);
+    FREE(p);
     return 0;
   }
 

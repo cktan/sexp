@@ -1,6 +1,14 @@
 #ifndef XEXPR_H
 #define XEXPR_H
 
+#include <stdio.h> // need this for size_t
+
+#ifdef __cplusplus
+#define XEX_EXTERN extern "C"
+#else
+#define XEX_EXTERN
+#endif
+
 typedef struct xex_list_t xex_list_t;
 typedef struct xex_string_t xex_string_t;
 typedef struct xex_object_t xex_object_t;
@@ -31,12 +39,12 @@ static inline xex_string_t *xex_to_string(xex_object_t *obj) {
   (xex_object_t *)(((x)->type == 'L' || (x)->type == 'S') ? (x) : 0)
 
 // Create a list object
-xex_list_t *xex_list_create();
+XEX_EXTERN xex_list_t *xex_list_create();
 
 // Append to a list
-int xex_list_append_object(xex_list_t *list, xex_object_t *obj);
-int xex_list_append_list(xex_list_t *list, xex_list_t *lx);
-int xex_list_append_string(xex_list_t *list, const char *str);
+XEX_EXTERN int xex_list_append_object(xex_list_t *list, xex_object_t *obj);
+XEX_EXTERN int xex_list_append_list(xex_list_t *list, xex_list_t *lx);
+XEX_EXTERN int xex_list_append_string(xex_list_t *list, const char *str);
 
 // Returns #elements in the list
 static inline int xex_list_length(xex_list_t *list) { return list->top; }
@@ -53,21 +61,21 @@ static inline const char *xex_list_get_string(xex_list_t *list, int idx) {
 }
 
 // Create a string object
-xex_string_t *xex_string_create(const char *str);
+XEX_EXTERN xex_string_t *xex_string_create(const char *str);
 
 // Make a deep copy
-xex_object_t *xex_dup(xex_object_t *obj);
+XEX_EXTERN xex_object_t *xex_dup(xex_object_t *obj);
 
 // Compare two objects for equality
-int xex_equal(xex_object_t *x, xex_object_t *y);
+XEX_EXTERN int xex_equal(xex_object_t *x, xex_object_t *y);
 
 // Traverse
 typedef int xex_callback_t(xex_list_t *parent, int idx);
-int xex_prefix(xex_list_t *lst, xex_callback_t *cb);
-int xex_postfix(xex_list_t *lst, xex_callback_t *cb);
+XEX_EXTERN int xex_prefix(xex_list_t *lst, xex_callback_t *cb);
+XEX_EXTERN int xex_postfix(xex_list_t *lst, xex_callback_t *cb);
 
 // Free obj
-void xex_release(xex_object_t *obj);
+XEX_EXTERN void xex_release(xex_object_t *obj);
 
 // Context of a parser error
 typedef struct xex_parse_error_t xex_parse_error_t;
@@ -78,10 +86,13 @@ struct xex_parse_error_t {
 };
 
 // Deserialize buf[] into xexpr objects
-xex_object_t *xex_parse(const char *buf, int len, const char **endp,
-                        xex_parse_error_t *err);
+XEX_EXTERN xex_object_t *xex_parse(const char *buf, int len, const char **endp,
+                                   xex_parse_error_t *err);
 
 // Serialize obj
-char *xex_to_text(xex_object_t *obj);
+XEX_EXTERN char *xex_to_text(xex_object_t *obj);
+
+XEX_EXTERN void xex_set_memutil(void *(*mymalloc)(size_t),
+                                void (*myfree)(void *));
 
 #endif /* XEXPR_H */
