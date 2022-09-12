@@ -170,6 +170,63 @@ int xex_equal(xex_object_t* x, xex_object_t* y) {
   return 0;
 }
 
+static int prefix(xex_list_t* parent, int idx, xex_callback_t* fn) {
+  // parent first
+  xex_object_t* me = xex_list_get(parent, idx);
+  CHECK(me);
+  CHECK(0 == fn(parent, idx));
+
+  xex_list_t* lst = xex_to_list(me);
+  if (lst) {
+    for (int i = 0, top = lst->top; i < top; i++) {
+      CHECK(prefix(lst, i, fn));
+    }
+  }
+  return 0;
+}
+
+static int postfix(xex_list_t* parent, int idx, xex_callback_t* fn) {
+  // kids first
+  xex_object_t* me = xex_list_get(parent, idx);
+  CHECK(me);
+
+  xex_list_t* lst = xex_to_list(me);
+  if (lst) {
+    for (int i = 0, top = lst->top; i < top; i++) {
+      CHECK(prefix(lst, i, fn));
+    }
+  }
+
+  CHECK(0 == fn(parent, idx));
+  return 0;
+}
+
+int xex_prefix(xex_list_t* lst, xex_callback_t* fn) {
+  xex_list_t root;
+  xex_object_t* vec[1];
+  vec[0] = (xex_object_t*)lst;
+  root.type = 'L';
+  root.vec = vec;
+  root.top = 1;
+  root.max = 1;
+
+  return prefix(&root, 0, fn);
+}
+
+
+int xex_postfix(xex_list_t* lst, xex_callback_t* fn) {
+  xex_list_t root;
+  xex_object_t* vec[1];
+  vec[0] = (xex_object_t*)lst;
+  root.type = 'L';
+  root.vec = vec;
+  root.top = 1;
+  root.max = 1;
+
+  return postfix(&root, 0, fn);
+}
+
+
 void xex_release(xex_object_t *obj) {
   xex_string_t *str;
   xex_list_t *list;

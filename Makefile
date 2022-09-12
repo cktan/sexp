@@ -16,6 +16,8 @@ $(BUILDDIRS):
 
 install: all
 	install -d ${prefix} ${prefix}/bin ${prefix}/include ${prefix}/lib ${prefix}/tests
+	install -m 0644 -t ${prefix}/include src/xexpr.h
+	install -m 0644 -t ${prefix}/lib src/libxexpr.a
 
 format: $(FORMATDIRS)
 

@@ -61,6 +61,11 @@ xex_object_t *xex_dup(xex_object_t *obj);
 // Compare two objects for equality
 int xex_equal(xex_object_t *x, xex_object_t *y);
 
+// Traverse
+typedef int xex_callback_t(xex_list_t *parent, int idx);
+int xex_prefix(xex_list_t *lst, xex_callback_t *cb);
+int xex_postfix(xex_list_t *lst, xex_callback_t *cb);
+
 // Free obj
 void xex_release(xex_object_t *obj);
 
