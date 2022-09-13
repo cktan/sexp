@@ -42,6 +42,14 @@ static void *CALLOC(size_t nmemb, size_t sz) {
   return p;
 }
 
+static void *STRDUP(const char *str) {
+  int nb = strlen(str) + 1;
+  void *p = MALLOC(nb);
+  if (p) {
+    strcpy(p, str);
+  }
+  return p;
+}
 
 // Accumulator
 typedef struct acc_t acc_t;
@@ -60,8 +68,10 @@ static int accput(acc_t* acc, const char* p, int len) {
     if (!newptr) {
       return -1;
     }
-    memcpy(newptr, acc->ptr, acc->max);
-    FREE(acc->ptr);
+    if (acc->ptr) {
+      memcpy(newptr, acc->ptr, acc->max);
+      FREE(acc->ptr);
+    }
     acc->ptr = newptr;
     acc->max = newmax;
   }
@@ -146,7 +156,7 @@ char *xex_to_text(xex_object_t *obj) {
   return acc.ptr;
 
  bail:
-  FREE(acc.ptr);
+  if (acc.ptr) FREE(acc.ptr);
   return 0;
 }
 
@@ -299,8 +309,10 @@ int xex_list_append_object(xex_list_t *list, xex_object_t *obj) {
     if (!newvec) {
       return -1;
     }
-    memcpy(newvec, list->vec, list->max * sizeof(*newvec));
-    FREE(list->vec);
+    if (list->vec) {
+      memcpy(newvec, list->vec, list->max * sizeof(*newvec));
+      FREE(list->vec);
+    }
     list->vec = newvec;
     list->max = newmax;
   }
@@ -325,7 +337,7 @@ xex_string_t* xex_string_create(const char* str) {
   xex_string_t* p = CALLOC(1, sizeof(*p));
   if (p) {
     p->type = 'S';
-    p->ptr = strdup(str);
+    p->ptr = STRDUP(str);
     if (!p->ptr) {
       FREE(p);
       p = 0;
