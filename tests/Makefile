@@ -1,9 +1,15 @@
+ARCH=$(shell uname -m)
+CC ?= gcc
+CFLAGS = -I../src -Wmissing-declarations -Wall -Wextra -MMD
+ifeq ($(ARCH), x86_64)
+CFLAGS += -mavx2 -mfma -mbmi2
+else ifeq ($(ARCH), aarch64)
+CFLAGS += -D__ARM_NEON__
+endif
+
 CFILES = xparse.c
 OBJ = $(CFILES:.c=.o)
 EXECS = $(CFILES:.c=)
-
-CC ?= gcc
-CFLAGS += -I../src -Wmissing-declarations -Wall -Wextra -mavx2 -mfma -mbmi2 -MMD
 
 ifdef DEBUG
     CFLAGS += -O0 -g
