@@ -1,5 +1,17 @@
+ARCH=$(shell uname -m)
 CC ?= gcc
-CFLAGS += -I../ext/include -Wmissing-declarations -Wall -Wextra -mavx2 -mfma -mbmi2 -MMD
+CFLAGS = -I../ext/include -Wmissing-declarations -Wall -Wextra -MMD
+ifeq ($(ARCH), x86_64)
+	ifeq ($(MARCH), )
+		CFLAGS += -march=broadwell
+	else
+		CFLAGS += -march=$(MARCH)
+	endif
+else ifeq ($(ARCH), aarch64)
+	CFLAGS += -D__ARM_NEON__
+endif
+
+
 
 ifdef DEBUG
     CFLAGS += -O0 -g
