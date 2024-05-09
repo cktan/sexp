@@ -2,9 +2,13 @@ ARCH=$(shell uname -m)
 CC ?= gcc
 CFLAGS = -I../src -Wmissing-declarations -Wall -Wextra -MMD
 ifeq ($(ARCH), x86_64)
-CFLAGS += -mavx2 -mfma -mbmi2
+	ifeq ($(MARCH), )
+		CFLAGS += -march=broadwell
+	else
+		CFLAGS += -march=$(MARCH)
+	endif
 else ifeq ($(ARCH), aarch64)
-CFLAGS += -D__ARM_NEON__
+	CFLAGS += -D__ARM_NEON__
 endif
 
 CFILES = xparse.c
